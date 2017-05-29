@@ -373,10 +373,10 @@ class BooleanMat(libsemigroups.BooleanMatNC):
             raise TypeError('the items in the arguments must all be '
                             ' bools or all be 0 or 1')
 
-        if isinstance(args[0][0], int):
-            self._rows = [[bool(x) for x in row] for row in args]
-        else:
+        if isinstance(args[0][0], type(True)):
             self._rows = [row[:] for row in args]
+        else:
+            self._rows = [[bool(x) for x in row] for row in args]
 
         libsemigroups.BooleanMatNC.__init__(self, self._rows)
 
@@ -384,7 +384,7 @@ class BooleanMat(libsemigroups.BooleanMatNC):
         n = self.degree()
         if i >= n:
             IndexError('list index out of range')
-        return self.rows()[i]
+        return [int(x) for x in self.rows()[i]]
 
     def __repr__(self):
         return ('BooleanMat(%s)'
