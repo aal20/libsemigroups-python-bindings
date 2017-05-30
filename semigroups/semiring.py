@@ -326,3 +326,94 @@ class MinPlusSemiring(Semiring):
             
         """
         return 0
+
+class BooleanSemiring(Semiring):
+    r"""
+    The boolean semiring is a semiring comprising the set :math:`\{\text{True},
+    \text{False} \}`, together with the operations 'or' and 'and'.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Raises:
+        TypeError:  If any argument is given.
+        
+    """
+    def __init__(self):
+        pass
+
+    def plus(self, x, y):
+        """
+        A function which returns True if either element is True (the boolean
+        'or' function), since this is the additive operation.
+
+        Args:
+            x (bool):    One of the elements to be added.
+            y (bool):    The other of the elements to be added.
+
+        Returns:
+            bool:    The result of x or y.
+
+        Raises:
+            TypeError:  If x and y are not both bools.
+            
+        """
+        if not (isinstance(x, type(True)) and isinstance(y, type(True))):
+            raise TypeError
+        return x | y
+
+    def prod(self, x, y):
+        """
+        A function which returns False if either element is False (the boolean
+        'and' function), since this is the additive operation.
+
+        Args:
+            x (bool):    One of the elements to be multiplied.
+            y (bool):    The other of the elements to be multiplied.
+
+        Returns:
+            bool:    The result of x and y.
+
+        Raises:
+            TypeError:  If x and y are not both bools.
+            
+        """
+        if not (isinstance(x, type(True)) and isinstance(y, type(True))):
+            raise TypeError
+        return x & y
+
+    def zero(self):
+        """
+        A function to find the additive identity of the boolean semiring, which
+        is False.
+
+        Args:
+            None
+
+        Returns:
+            bool:   False
+
+        Raises:
+            TypeError:  If any argument is given.
+        """
+        return False
+    
+    def one(self):
+        """
+        A function to find the mutliplicative identity of the boolean semiring,
+        which is True.
+
+        Args:
+            None
+
+        Returns:
+            bool:   True
+
+        Raises:
+            TypeError:  If any argument is given.
+        """
+        return True
+
