@@ -3,21 +3,19 @@ This module contains classes for representing elements of semigroups.
 '''
 # pylint: disable = no-member, protected-access, invalid-name,
 # pylint: disable = too-few-public-methods
+# pylint: disable = len-as-condition
 
 import libsemigroups
 
 class Transformation(libsemigroups.TransformationNC):
-    '''
-    A class for handling libsemigroups transformations.
-
-    A transformation f is a function defined on the set {0, 1, ..., n - 1}
-    for some integer n called the degree of f. A transformation is stored as a
-    list of the images of {0, 1, ..., n - 1},
-    i.e. [(0)f, (1)f, ..., (n - 1)f].
+    r'''
+    Let :math:`n\in\mathbb{N}, \ X = \{0, \ldots, n - 1\}`. A
+    transformation is a function :math:`f:X \to X`, where :math:`n` is called
+    the degree of the transformation.
 
     Args:
-        List (list): Image list of the Transformation when applied to
-        [0, 1, ..., n]
+        List (list):    Image list of the Transformation when applied to
+                        :math:`[0, 1, \ldots, n]`
 
     Raises:
         TypeError:  If the arg is not a list of ints, or if there is more than
@@ -50,18 +48,16 @@ class Transformation(libsemigroups.TransformationNC):
 
 class PartialPerm(libsemigroups.PartialPermNC):
 
-    '''
-    A class for handles to libsemigroups partial perm.
-
-    A partial permutation f is an injective partial transformation, which is
-    stored as a list of the images of {0, 1, ..., n -1}, i.e.
-    [(0)f, (1)f, ..., (n - 1)f] where the value -1 is used to indicate i(f) is
-    undefined.
+    r'''
+    A partial permutation :math:`f` is an injective partial transformation,
+    which is stored as a list of the images of :math:`\{0, 1, \ldots, n - 1\}`,
+    i.e. :math:`[(0)f, (1)f, \ldots, (n - 1)f]`, where the value -1 is used to
+    indicate :math:`i(f)` is undefined.
 
     Args:
         args (list):    Image list of the partial permutation when applied to
-                        [0, 1, ..., n], -1 being used to indicate the image is
-                        undefined.
+                        :math:`[0, 1, ..., n], \ -1` being used to indicate the
+                        image is undefined.
 
         args (list):    List containing the domain, as a list of ints, then the
                         range, as a list of ints, then the degree.
@@ -148,11 +144,8 @@ class PartialPerm(libsemigroups.PartialPermNC):
         Function for finding the domain of the partial permutation, that
         maps to defined elements.
 
-        Args:
-            None
-
         Returns:
-            list: The domain of the partial permutation
+            list: The domain of the partial permutation.
 
         Raises:
             TypeError:  If any argument is given.
@@ -169,11 +162,8 @@ class PartialPerm(libsemigroups.PartialPermNC):
         '''
         Function for finding the range of the partial permutation.
 
-        Args:
-            None
-
         Returns:
-            list: The range of the partial permutation
+            list: The range of the partial permutation.
 
         Raises:
             TypeError:  If any argument is given.
@@ -188,19 +178,19 @@ class PartialPerm(libsemigroups.PartialPermNC):
 
 
 class Bipartition(libsemigroups.BipartitionNC):
-    r'''A class for bipartitions.
 
-    A bipartition is a partition of the set :math:`\{-n, ..., -1, 1, ..., n\}`
-    for some integer n. This can be stored as a list of blocks, the subsets
-    of the bipartition
+    # pylint: disable = too-many-branches, non-parent-init-called
+    r'''A bipartition is a partition of the set :math:`\{-n, \ldots, -1, 1,
+    \ldots, n\}` for some :math:`n\in\mathbb{N}`. This can be stored as a list
+    of blocks, the subsets of the bipartition.
 
     Args:
         args (lists):   The blocks of the bipartition as lists.
 
     Raises:
-        TypeError:  If any of the blocks are not lists
-        ValueError: If the union of the blocks is not the set {-n, ..., -1}
-                    union {1, ..., n}
+        TypeError:  If any of the blocks are not lists.
+        ValueError: If the union of the blocks is not the set :math:`\{-n, ...,
+                    -1\} \cup \{1, \ldots, n\}`
 
     Example:
         >>> from semigroups import Bipartition
@@ -235,25 +225,25 @@ class Bipartition(libsemigroups.BipartitionNC):
                              + '[-%s .. -1, 1 .. %s],' % (n, n))
 
         copy = [x[:] for x in args]
-        for i in range(len(copy)):
-            for j in range(len(copy[i])):
-                if copy[i][j] < 0:
-                    copy[i][j] = abs(copy[i][j]) + n
+        for i, iitem in enumerate(copy):
+            for j, jitem in enumerate(iitem):
+                if jitem < 0:
+                    copy[i][j] = abs(jitem) + n
 
         copy = [sorted(x) for x in copy]
         copy.sort()
 
         lookup = [0] * 2 * n
         next_block = 0
-        for i in range(len(copy)):
-            for j in copy[i]:
+        for item in copy:
+            for j in item:
                 lookup[j - 1] = next_block
             next_block += 1
 
-        for i in range(len(copy)):
-            for j in range(len(copy[i])):
-                if copy[i][j] > n:
-                    copy[i][j] = -1 * copy[i][j] + n
+        for i, iitem in enumerate(copy):
+            for j, jitem in enumerate(iitem):
+                if jitem > n:
+                    copy[i][j] = -1 * jitem + n
 
         self._blocks = copy
         libsemigroups.BipartitionNC.__init__(self, lookup)
@@ -266,13 +256,13 @@ class Bipartition(libsemigroups.BipartitionNC):
         where all negative elements are greater than all positive elements.
 
         Args:
-            element (int): The element in question
+            element (int): The element in question.
 
         Returns:
-            int: The index of the block that the element is in
+            int: The index of the block that the element is in.
 
         Raises:
-            ValueError: If the element is not in the bipartition
+            ValueError: If the element is not in the bipartition.
 
         Example:
             >>> from semigroups import Bipartition
@@ -293,13 +283,10 @@ class Bipartition(libsemigroups.BipartitionNC):
 
     def blocks(self):
         '''
-        Function for finding the blocks of a bipartition
-
-        Args:
-            None
+        Function for finding the blocks of a bipartition.
 
         Returns:
-            list: The blocks of the bipartition
+            list: The blocks of the bipartition.
 
         Raises:
             TypeError:  If any argument is given.
@@ -328,19 +315,19 @@ class Bipartition(libsemigroups.BipartitionNC):
 
 
 class BooleanMat(libsemigroups.BooleanMatNC):
+    # pylint: disable = non-parent-init-called
     '''
-    A class for handles to libsemigroups BooleanMat.
-
-    A boolean matrix is a matrix with entries either True or False.
+    A boolean matrix is a square matrix with entries either True or False.
+    These can be entered as True, False or 1, 0.
 
     Args:
         args (lists):   The rows of the matrix as lists.
 
     Raises:
-        TypeError:  If any of the rows are not lists
+        TypeError:  If any of the rows are not lists.
 
         ValueError: If the number of lists given does not equal the length of
-                    every list
+                    every list.
 
     Example:
         >>> from semigroups import BooleanMat
@@ -394,9 +381,6 @@ class BooleanMat(libsemigroups.BooleanMatNC):
         '''
         Function for finding the rows of a boolean matrix.
 
-        Args:
-            None
-
         Returns:
             list: The rows of the boolean matrix.
 
@@ -417,17 +401,18 @@ class BooleanMat(libsemigroups.BooleanMatNC):
 
 
 class PBR(libsemigroups.PBRNC):
-    """
-    A class for handles to libsemigroups PBR.
 
-    A partitioned binary relation is a generalisation of a Bipartition, where
-    elements are adjacent to some other elements, but a adjacent to b need not
-    imply b adjacent to a.
+    # pylint: disable = non-parent-init-called
+    r"""
+    Let :math:`n\in\mathbb{N}, \ X = \{-n, \ldots, -1\}\cup \{1, \ldots, n\}`.
+    A partitioned binary relation (PBR) is a set of :math:`2n` pairs, each
+    comprising a distinct element :math:`x\in X` and a subset :math:`Y
+    \subseteq X`.
 
     Args:
         args (lists):   The adjacencies of the negative elements as a list of
                         lists followed by the positive elements as a list of
-                        lists
+                        lists.
 
     Raises:
         TypeError:  If more less than two argments are given, if the given

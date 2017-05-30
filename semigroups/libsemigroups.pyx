@@ -110,11 +110,8 @@ cdef class ElementABC:
         and is used to determine whether or not two elements are compatible for
         multiplication.
 
-        Args:
-            None
-
         Returns:
-            int: The degree of the element
+            int: The degree of the element.
 
         Raises:
             TypeError:  If any argument is given.
@@ -128,16 +125,13 @@ cdef class ElementABC:
 
     def identity(self):
         '''
-        Function for finding the mutliplicative identity FIXME
+        Function for finding the mutliplicative identity FIXME.
 
         This function finds the multiplicative identity of the same element
         type and degree as the current element.
 
-        Args:
-            None
-
         Returns:
-            Element: The identity element of the Element subclass
+            Element: The identity element of the Element subclass.
 
         Raises:
             TypeError:  If any argument is given.
@@ -176,9 +170,6 @@ cdef class PartialPermNC(ElementABC):
         '''
         Method for finding the rank of the partial permutation.
 
-        Args:
-            None
-
         Returns:
             int: The rank of the partial permutation
 
@@ -207,11 +198,8 @@ cdef class BipartitionNC(ElementABC):
     def nr_blocks(self):
         '''Method for finding the number of blocks of a bipartition.
 
-        Args:
-            None
-
         Returns:
-            int: The number blocks of the bipartition
+            int: The number blocks of the bipartition.
 
         Raises:
             TypeError:  If any argument is given.
@@ -238,15 +226,15 @@ cdef class BipartitionNC(ElementABC):
         elements.
 
         Args:
-            index (int): The index of the block in question
+            index (int): The index of the block in question.
 
         Returns:
-            list: The blocks of the bipartition
+            list: The blocks of the bipartition.
 
         Raises:
             TypeError:  If index is not an int.
             IndexError: If index does not relate to the index of a block in the
-                        partition
+                        partition.
 
         Example:
             >>> from semigroups import Bipartition
