@@ -5,7 +5,7 @@ This module contains classes for semirings.
 # pylint: disable = no-member, protected-access, invalid-name
 # pylint: disable = too-few-public-methods
 
-class Semiring:
+class SemiringABC:
     r"""
     A *semiring* is a set :math:`R`, together with two binary operations,
     :math:`+, \times`, such that :math:`(R, +)` is a commutative monoid,
@@ -29,7 +29,7 @@ class Semiring:
         self._minus_infinity = -float('inf')
         self._plus_infinity = float('inf')
 
-class Integers(Semiring):
+class Integers(SemiringABC):
     """
     The usual ring of the Integers.
 
@@ -138,7 +138,7 @@ class Integers(Semiring):
         return 1
 
 
-class MaxPlusSemiring(Semiring):
+class MaxPlusSemiring(SemiringABC):
     r"""
     The *max plus semiring* is a semiring comprising the set
     :math:`\mathbb{Z}\cup\{-\infty\}`, together with an operation which
@@ -257,7 +257,7 @@ class MaxPlusSemiring(Semiring):
         """
         return 0
 
-class MinPlusSemiring(Semiring):
+class MinPlusSemiring(SemiringABC):
     r"""
     The *min plus semiring* is a semiring comprising the set
     :math:`\mathbb{Z}\cup\{\infty\}`, together with an operation which
@@ -379,7 +379,7 @@ class MinPlusSemiring(Semiring):
 
         return 0
 
-class BooleanSemiring(Semiring):
+class BooleanSemiring(SemiringABC):
     r"""
     The *boolean semiring* is a semiring comprising the set :math:`\{\text{True},
     \text{False} \}`, together with the operations 'or' and 'and'.
@@ -491,7 +491,7 @@ class BooleanSemiring(Semiring):
 
         return True
 
-class SemiringWithThreshold(Semiring):
+class SemiringWithThresholdABC(SemiringABC):
     """
     A *semiring with a threshold* is a semiring is a semiring with a largest
     finite value, the *threshold*.
@@ -525,7 +525,7 @@ class SemiringWithThreshold(Semiring):
 
         return self._threshold
 
-class TropicalMaxPlusSemiring(SemiringWithThreshold):
+class TropicalMaxPlusSemiring(SemiringWithThresholdABC):
     # pylint: disable = super-init-not-called
     r"""
     A *tropical max plus semiring* is a semiring comprising the set :math:`\{0,
@@ -679,7 +679,7 @@ class TropicalMaxPlusSemiring(SemiringWithThreshold):
 
         return 0
 
-class TropicalMinPlusSemiring(SemiringWithThreshold):
+class TropicalMinPlusSemiring(SemiringWithThresholdABC):
     # pylint: disable = super-init-not-called
     r"""
     A *tropical min plus semiring* is a semiring comprising the set :math:`\{0,
@@ -839,7 +839,7 @@ class TropicalMinPlusSemiring(SemiringWithThreshold):
 
         return 0
 
-class NaturalSemiring(SemiringWithThreshold):
+class NaturalSemiring(SemiringWithThresholdABC):
     # pylint: disable = super-init-not-called
     r"""
     Let :math:`t\in\mathbb{N}_0, p\in\mathbb{N}` and :math:`\equiv` be the

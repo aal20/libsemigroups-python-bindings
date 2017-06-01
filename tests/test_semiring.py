@@ -1,10 +1,10 @@
 import unittest
 import sys
 import os
-from semigroups import (Semiring, Integers, MaxPlusSemiring, MinPlusSemiring,
-                        BooleanSemiring, SemiringWithThreshold,
-                        TropicalMaxPlusSemiring, TropicalMinPlusSemiring,
-                        NaturalSemiring)
+from semigroups import (SemiringABC, Integers, MaxPlusSemiring,
+                        MinPlusSemiring, BooleanSemiring,
+                        SemiringWithThresholdABC, TropicalMaxPlusSemiring,
+                        TropicalMinPlusSemiring, NaturalSemiring)
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if not path in sys.path:
