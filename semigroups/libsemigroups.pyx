@@ -42,12 +42,12 @@ cdef class ElementABC:
 
     def __cinit__(self):
         self._handle = NULL
-    
+
     cdef new_from_handle(self, libsemigroups.Element* handle):
         cdef ElementABC result = self.__class__(self)
         result._handle = handle[0].really_copy()
         return result
-    
+
     def __dealloc__(self):
         if self._handle != NULL:
             self._handle[0].really_delete()
@@ -61,25 +61,25 @@ cdef class ElementABC:
         cdef libsemigroups.Element* product = self._handle.identity()
         product.redefine(self._handle, other._handle)
         return self.new_from_handle(product)
-  
+
     def __richcmp__(ElementABC self, ElementABC other, int op):
         if not isinstance(self, type(other)):
             raise TypeError('the arguments (elements) must be same type')
         elif op == 0:
             return self._handle[0] < other._handle[0]
         elif op == 1:
-            return (self._handle[0] < other._handle[0] 
+            return (self._handle[0] < other._handle[0]
                     or self._handle[0] == other._handle[0])
         elif op == 2:
             return self._handle[0] == other._handle[0]
         elif op == 3:
             return not self._handle[0] == other._handle[0]
         elif op == 4:
-            return not (self._handle[0] < other._handle[0] 
+            return not (self._handle[0] < other._handle[0]
                         or self._handle[0] == other._handle[0])
         elif op == 5:
             return not self._handle[0] < other._handle[0]
-    
+
     # TODO avoid creating new elements for every product here
     def __pow__(self, n, modulo):
         message = 'the argument (power) must be a non-negative integer'
@@ -330,11 +330,11 @@ cdef class PythonElementNC(ElementABC):
 
 # TODO Currently there seems to be no point in putting this into semigrp.py
 # since almost every method has no checks but just calls the corresponding
-# method for the C++ object. 
+# method for the C++ object.
 
 cdef class SemigroupNC:
     # holds a pointer to the C++ instance which we're wrapping
-    cdef libsemigroups.Semigroup* _handle      
+    cdef libsemigroups.Semigroup* _handle
     cdef ElementABC _an_element
 
     def __cinit__(self):
@@ -414,7 +414,7 @@ cdef class SemigroupNC:
         An element :math:`a` of a semigroup is an *idempotent* if :math:`a^2
         =a`.
 
-        This is a function for finding the number of idempotents of a 
+        This is a function for finding the number of idempotents of a
         semigroup.
 
         Returns:
@@ -427,7 +427,7 @@ cdef class SemigroupNC:
             >>> from semigroups import Semigroup, Transformation
             >>> S = Semigroup(Transformation([1, 0]), Transformation([0, 0]))
             >>> S.nridempotents()
-            3                    
+            3
             >>> Transformation([0, 1]) ** 2
             Transformation([0, 1])
             >>> Transformation([1, 0]) ** 2
@@ -438,12 +438,12 @@ cdef class SemigroupNC:
             Transformation([0, 0])
         '''
         return self._handle.nridempotents()
-    
+
     def is_done(self):
         """
         A semigroup is fully enumerated when the product of every element by
         every generator is known.
-        
+
         This is a function for finding if a semigroup is fully enumerated.
 
         Returns:
@@ -464,7 +464,7 @@ cdef class SemigroupNC:
         """
 
         return self._handle.is_done()
-    
+
     def is_begun(self):
         """
         Function for finding if any non-generator elements of a semigroup are
@@ -487,16 +487,17 @@ cdef class SemigroupNC:
             True
         """
         return self._handle.is_begun()
-    
+
+    #TODO Replace with position
     def current_position(self, ElementABC x):
         """
         A function for finding the position that an enumerated element is
-        stored. 
+        stored.
 
         If the element has not been enumerated, or is not in the semigroup, the
         function returns None.
 
-        
+
         Args:
             x (semigroups.libsemigroups.ElementABC): The element.
 
@@ -518,7 +519,7 @@ cdef class SemigroupNC:
         if pos == -1:
             return None # TODO Ok?
         return pos
-    
+
     def __contains__(self, ElementABC x):
         return self._handle.test_membership(x._handle)
 
@@ -540,7 +541,7 @@ cdef class SemigroupNC:
             >>> S.set_report(True)
             >>> S.size()
             Thread #0: Semigroup::enumerate: limit = 18446744073709551615
-            Thread #0: Semigroup::enumerate: elapsed time = 3127ns 
+            Thread #0: Semigroup::enumerate: elapsed time = 3127ns
             2
         """
         if val == True:
@@ -584,8 +585,31 @@ cdef class SemigroupNC:
         py_word = [letter for letter in c_word[0]]
         del c_word
         return py_word
-    
-    def enumerate(self, limit):
+
+    def enumerate(self, limit = 18446744073709551615):
+        """
+        Function for enumerating elements of a semigroup. If limit is not set,
+        the function will attempt to completely enumerate the semigroup.
+        Otherwise, it will continue until the number of elements found is
+        greater than or equal to limit.
+
+        Uses the Froidure-Pin algorithm.
+
+        Args:
+            limit (int): The number of elements to be found before terminating.
+
+        Returns:
+            None
+
+        Examples:
+            >>> from semigroups import FullTransformationMonoid
+            >>> S = FullTransformationMonoid(50)
+            >>> S.enumerate(5)
+            >>> S.is_begun()
+            True
+            >>> S.is_done()
+            False
+        """
         self._handle.enumerate(limit)
 
     cdef new_from_handle(self, libsemigroups.Element* handle):
@@ -640,10 +664,21 @@ cdef class SemigroupNC:
                 yield self.new_from_handle(element)
             pos += 1
 
+    def right_cayley_graph(self):
+        cdef libsemigroups.RecVec[size_t]* c_graph = self._handle.right_cayley_graph()
+        adjacencies_list = []
+        for i in range(c_graph[0].nr_rows()):
+            adjacencies_list.append([])
+            for j in range(c_graph[0].nr_cols()):
+                x = c_graph.get(i, j)
+                adjacencies_list[-1].append(x)
+
+        return adjacencies_list
+
 cdef class FpSemigroupNC(SemigroupNC):
     cdef libsemigroups.Congruence* _congruence
     cdef libsemigroups.RWS* _rws
-    
+
     def __convert_word(self, word):
         return [self.alphabet.index(i) for i in word]
 
@@ -657,7 +692,7 @@ cdef class FpSemigroupNC(SemigroupNC):
                                                         [],
                                                         rels)
         self._rws = new libsemigroups.RWS(rels)
-    
+
     def __dealloc__(self):
         del self._congruence
         del self._rws
@@ -672,7 +707,7 @@ cdef class FpSemigroupNC(SemigroupNC):
 
     def set_report(self, val):
         '''
-        Sets whether or not to report data when running certain 
+        Sets whether or not to report data when running certain
         functions (e.g size).
 
         Args:
@@ -696,11 +731,11 @@ cdef class FpSemigroupNC(SemigroupNC):
 
     def is_confluent(self):
         '''
-        Checks if the rewriting system defined by the relations of a finitely 
+        Checks if the rewriting system defined by the relations of a finitely
         presented semigroup is confluent.
-        
+
         If a finitely presented semigroup has a confluent rewriting system
-        then it has solvable word problem. In other words, there is an 
+        then it has solvable word problem. In other words, there is an
         algorithm to decide when two words over the generators of the semigroup
         are equal. Indeed, once we have a confluent rewriting system, it is
         possible to successfully test that two words represent the same element
