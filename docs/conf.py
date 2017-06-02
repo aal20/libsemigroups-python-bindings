@@ -58,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Semigroups'
-copyright = u'2017, James D. Mitchell, Nicolas M. Thiéry, Luke Elliot, Alex Levine'
+copyright = u'2017, James D. Mitchell, Nicolas M. Thiéry, Luke Elliott, Alex Levine'
 author = u'James D. Mitchell, Nicolas M. Thiéry, Luke Elliot, Alex Levine'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -152,7 +152,7 @@ autoclass_content = 'class'
 
 # The name for this set of Sphinx documents.
 # "<project> v<release> documentation" by default.
-#
+#i
 html_title = u'semigroups v0.3.1'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
