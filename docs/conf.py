@@ -288,7 +288,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'semigroups.tex', u'semigroups Documentation',
-     u'James D. Mitchell, Nicolas M. Thiéry, Luke Elliot, Alex Levine', 'manual'),
+     u'James D. Mitchell, Nicolas M. Thiéry, Luke Elliott, Alex Levine', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
