@@ -130,7 +130,7 @@ class CayleyGraph:
             >>> S = Semigroup(Transformation([0, 0]),
             ... Transformation([1, 0]))
             >>> G = S.right_cayley_graph()
-            >>> G.strongly_connected_components()
-            [{0, 2}, {1, 3}]
+            >>> G.strongly_connected_components() == [set([0, 2]), set([1, 3])]
+            True
         """
         return list(networkx.strongly_connected_components(self._graph))
