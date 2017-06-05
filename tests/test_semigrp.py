@@ -29,6 +29,11 @@ class TestSemigroup(unittest.TestCase):
         self.assertTrue(isinstance(Semigroup(-1).right_cayley_graph(),
                                    CayleyGraph))
 
+    def test_left_cayley_graph(self):
+        Semigroup(Transformation([0, 1])).right_cayley_graph()
+        self.assertTrue(isinstance(Semigroup(-1).left_cayley_graph(),
+                                   CayleyGraph))
+
 class TestOtherFunctions(unittest.TestCase):
     def test_FullTransformationMonoid(self):
         self.assertEqual(FullTransformationMonoid(3)[7],

@@ -62,7 +62,7 @@ class CayleyGraph:
             >>> G.ordered_adjacencies()
             [[0, 2], [0, 3], [0, 0], [0, 1]]
         """
-        return self._adjacencies_list
+        return self._adj_list
 
     def edges(self):
         """
