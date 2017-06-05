@@ -82,6 +82,7 @@ cdef extern from "<libsemigroups/semigroups.h>" namespace "libsemigroups":
         vector[size_t]* factorisation(size_t pos)
         void enumerate(size_t limit)
         RecVec[size_t]* right_cayley_graph()
+        RecVec[size_t]* left_cayley_graph()
 
 cdef extern from "<libsemigroups/cong.h>" namespace "libsemigroups":
     cdef cppclass Congruence:

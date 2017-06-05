@@ -674,6 +674,20 @@ cdef class SemigroupNC:
                 adjacencies_list[-1].append(x)
 
         return adjacencies_list
+<<<<<<< 7c63297f63800b03d5d83bdb5f503bce35c2d5f1
+=======
+
+    def left_cayley_graph(self):
+        cdef libsemigroups.RecVec[size_t]* c_graph = self._handle.left_cayley_graph()
+        adjacencies_list = []
+        for i in range(c_graph[0].nr_rows()):
+            adjacencies_list.append([])
+            for j in range(c_graph[0].nr_cols()):
+                x = c_graph.get(i, j)
+                adjacencies_list[-1].append(x)
+
+        return adjacencies_list  
+>>>>>>> libsemigroups: Add method left_cayley_graph
 
 cdef class FpSemigroupNC(SemigroupNC):
     cdef libsemigroups.Congruence* _congruence
