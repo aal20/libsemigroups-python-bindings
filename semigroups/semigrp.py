@@ -7,6 +7,7 @@ import libsemigroups
 from semigroups.elements import Transformation
 from semigroups.cayley_graph import CayleyGraph
 from libsemigroups import ElementABC, PythonElementNC
+import networkx
 
 class Semigroup(libsemigroups.SemigroupNC):
     r'''
@@ -60,10 +61,11 @@ class Semigroup(libsemigroups.SemigroupNC):
             except:
                 raise TypeError(err_msg)
 
-        gens = [g if (isinstance(g, ElementABC) and str(type(g)) !=
+        self.gens = [g if (isinstance(g, ElementABC) and str(type(g)) !=
                       "<class 'semigroups.semifp.FPSOME'>")
                 else PythonElementNC(g) for g in args]
-        libsemigroups.SemigroupNC.__init__(self, gens)
+        libsemigroups.SemigroupNC.__init__(self, self.gens)
+        self._done_commute_membership = False
 
     def right_cayley_graph(self):
         r"""
