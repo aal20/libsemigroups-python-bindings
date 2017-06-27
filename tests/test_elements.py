@@ -40,7 +40,7 @@ class TestBipartition(unittest.TestCase):
                              Bipartition([1, -2], [2, -1]))
         self.assertGreaterEqual(Bipartition([1, -1, 3], [-3, 2, -2]),
                                 Bipartition([1, -2], [2, -1]))
-        self.assertFalse(Bipartition([1, -1, 3], [-3, 2, -2]) > 
+        self.assertFalse(Bipartition([1, -1, 3], [-3, 2, -2]) >
                          Bipartition([1, -1], [2, 3, -2], [-3]))
 
         with self.assertRaises(TypeError):
@@ -296,7 +296,7 @@ class TestBooleanMat(unittest.TestCase):
         with self.assertRaises(ValueError):
             (BooleanMat([False, True, True],
                        [True, True, False],
-                       [False, False, False]) * 
+                       [False, False, False]) *
             BooleanMat([True, False], [False, True]))
 
     def test_pow(self):
@@ -410,17 +410,17 @@ class TestPartialPerm(unittest.TestCase):
     def test_richcmp(self):
         self.assertEqual(PartialPerm([1, 2, 3], [2, 1, 0], 5),
                          PartialPerm([1, 2, 3], [2, 1, 0], 5))
-        self.assertFalse(PartialPerm([1, 2, 3], [2, 1, 0], 5) != 
+        self.assertFalse(PartialPerm([1, 2, 3], [2, 1, 0], 5) !=
                          PartialPerm([1, 2, 3], [2, 1, 0], 5))
-        self.assertFalse(PartialPerm([1, 2, 4], [2, 1, 0], 5) == 
+        self.assertFalse(PartialPerm([1, 2, 4], [2, 1, 0], 5) ==
                           PartialPerm([1, 2, 3], [2, 3, 0], 5))
         self.assertNotEqual(PartialPerm([1, 2, 4], [2, 1, 0], 5),
                             PartialPerm([1, 2, 3], [2, 3, 0], 5))
-        self.assertFalse(PartialPerm([1, 2, 4], [2, 1, 0], 5) < 
+        self.assertFalse(PartialPerm([1, 2, 4], [2, 1, 0], 5) <
                           PartialPerm([1, 2, 3], [2, 3, 0], 5))
         self.assertLess(PartialPerm([1, 2], [0, 1], 3),
                         PartialPerm([2, 0], [0, 1], 3))
-        self.assertFalse(PartialPerm([1, 2], [0, 1], 3) > 
+        self.assertFalse(PartialPerm([1, 2], [0, 1], 3) >
                          PartialPerm([2, 0], [0, 1], 3))
         self.assertGreater(PartialPerm([1, 2], [1, 2], 3),
                            PartialPerm([1, 2], [0, 1], 3))
@@ -689,14 +689,14 @@ class TestPBR(unittest.TestCase):
 
         self.assertEqual(eval(PBR([[1, 2, 3, -1, -2, -3],
                                    [1, 2, 3, -1, -2, -3], [3, -2, -3]],
-                                  [[2], [3, -2, -3], 
+                                  [[2], [3, -2, -3],
                                    [1, 2, 3, -2, -3]]).__repr__()),
                          PBR([[1, 2, 3, -1, -2, -3],
                               [1, 2, 3, -1, -2, -3], [3, -2, -3]],
                               [[2], [3, -2, -3], [1, 2, 3, -2, -3]]))
-        self.assertEqual(eval(PBR([[1, -1]], [[1]]).__repr__()), 
+        self.assertEqual(eval(PBR([[1, -1]], [[1]]).__repr__()),
                               PBR([[1, -1]], [[1]]))
-        self.assertEqual(eval(PBR([[1, 2], [1, -1]], 
+        self.assertEqual(eval(PBR([[1, 2], [1, -1]],
                                   [[1], [2]]).identity().__repr__()),
                          PBR([[-1], [-2]], [[1], [2]]))
 
@@ -807,6 +807,41 @@ class TestTransformation(unittest.TestCase):
                          Transformation([2, 2, 2]))
         self.assertEqual(eval(Transformation([1, 2, 3, 3]).__repr__()),
                          Transformation([1, 2, 3, 3]))
+
+    def test_disjoint_cycle(self):
+        self.assertEqual(Transformation([3, 1, 2, 0]).disjoint_cycle(),
+                         {(0, 3)})
+        self.assertEqual(Transformation([1, 3, 2, 7,
+                                         4, 6, 5, 0]).disjoint_cycle(),
+                         {(0, 1, 3, 7), (5, 6)})
+        self.assertEqual(Transformation([8, 6, 11, 5,
+                                         0, 1, 3, 9,
+                                         2, 10, 4, 7]).disjoint_cycle(),
+                         {(0, 8, 2, 11, 7, 9, 10, 4), (1, 6, 3, 5)})
+
+        with self.assertRaises(ValueError):
+            Transformation([1, 1]).disjoint_cycle()
+        with self.assertRaises(ValueError):
+            Transformation([0, 0, 3, 3]).disjoint_cycle()
+        with self.assertRaises(TypeError):
+            Transformation([0]).disjoint_cycle(0)
+
+    def test_inverse(self):
+        self.assertEqual(Transformation([3, 1, 2, 0]).inverse(),
+                         Transformation([3, 1, 2, 0]))
+        self.assertEqual(Transformation([1, 3, 2, 7, 4, 6, 5, 0]).inverse(),
+                         Transformation([7, 0, 2, 1, 4, 6, 5, 3]))
+        self.assertEqual(Transformation([8, 6, 11, 5, 0, 1,
+                                         3, 9, 2, 10, 4, 7]).inverse(),
+                         Transformation([4, 5, 8, 6, 10, 3,
+                                         1, 11, 0, 7, 9, 2]))
+
+        with self.assertRaises(TypeError):
+            Transformation([0]).inverse(0)
+        with self.assertRaises(ValueError):
+            Transformation([1, 1]).inverse()
+        with self.assertRaises(ValueError):
+            Transformation([0, 0, 3, 3]).inverse()
 
 if __name__ == '__main__':
     unittest.main()

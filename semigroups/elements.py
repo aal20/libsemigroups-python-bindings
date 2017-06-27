@@ -41,13 +41,126 @@ class Transformation(libsemigroups.TransformationNC):
                              % len(arg))
         else:
             libsemigroups.TransformationNC.__init__(self, arg)
+        self.threshold = None
+        self.imagelist = None
+
+    def __getitem__(self, index):
+        if self.imagelist is None:
+            self.imagelist = list(self)
+        return self.imagelist[index]
+
+    #If self is aperiodic, this function calculates the threshold of self.
+    def _aperiod_threshold(self):
+        if self.threshold is None:
+            if self == self.identity():
+                self.threshold = 0
+                return 0
+            maximum = self.degree()
+            minimum = 0
+            position = (maximum + minimum) / 2
+            position = int(position)
+            check = True
+            while check and maximum - minimum > 1:
+                if position == 0:
+                    position = 1
+                current = self ** (position - 1)
+                if current * self == current:
+                    maximum = position -  1
+                    position = int((maximum + minimum)/2)
+                elif current * self == current * self * self:
+                    self.threshold = position
+                    return position
+                else:
+                    minimum = position + 1
+                    position = int((maximum + minimum)/2)
+            if self ** minimum == self ** (minimum + 1):
+                self.threshold = minimum
+                return minimum
+            self.threshold = minimum + 1
+            return minimum + 1
+
+        return self.threshold
+
+    #Determines if self has threshold 1.
+    def _has_threshold_1(self):
+        if self == self.identity():
+            return False
+        if self.imagelist is None:
+            self.imagelist = list(self)
+        action_on_image = [self.imagelist[i] for i in set(self.imagelist)]
+        return len(action_on_image) == len(set(action_on_image))
+
+    def disjoint_cycle(self):
+        '''
+        If a transformation is a permutation, it can be written in disjoint
+        cycle notation. This function returns a set of tuples to represent
+        a permutation's disjoint cycle format.
+
+        Returns:
+            set: A set of tuples representing the cycles.
+
+        Raises:
+            ValueError: If the transformation is not a permutation.
+            TypeError:  If any argument is given.
+
+        Example:
+            >>> from semigroups import Transformation
+            >>> (Transformation([1, 0, 3, 5, 4, 2]).disjoint_cycle() ==
+            ... {(0, 1), (2, 3, 5)})
+            True
+        '''
+        if self.degree() != len(set(self)):
+            raise ValueError('given transformation is not a permutation')
+        if self == self.identity():
+            return set()
+        done_set = set()
+        out = []
+
+        for k in range(self.degree()):
+            if k in done_set:
+                continue
+            current_cycle = [k, self[k]]
+
+            while current_cycle[-1] != current_cycle[0]:
+                current_cycle.append(self[current_cycle[-1]])
+
+            if len(current_cycle) >= 3:
+                current_cycle.pop()
+                out.append(current_cycle)
+                done_set = done_set.union(set(current_cycle))
+
+        return set(tuple(x) for x in out)
+
+    def inverse(self):
+        '''
+        If a transformation is a permutation, it has an inverse. This function
+        returns the inverse transformation of a permutation.
+
+        Returns:
+            semigroups.elements.Transformation: The inverse.
+
+        Raises:
+            ValueError: If the transformation is not a permutation.
+            TypeError:  If any argument is given.
+
+        Example:
+            >>> from semigroups import Transformation
+            >>> Transformation([1, 0, 3, 5, 4, 2]).inverse()
+            Transformation([1, 0, 5, 2, 4, 3])
+        '''
+        if self.degree() != len(set(self)):
+            raise ValueError('given transformation is not a permutation')
+
+        out = [-1] * self.degree()
+        for i, j in enumerate(self):
+            out[j] = i
+        return Transformation(out)
 
     def __repr__(self):
         return 'Transformation(%s)' % str(list(self))
 
 
 class PartialPerm(libsemigroups.PartialPermNC):
-
     r'''
     A partial permutation :math:`f` is an injective partial transformation,
     which is stored as a list of the images of :math:`\{0, 1, \ldots, n - 1\}`,
@@ -496,4 +609,3 @@ class PBR(libsemigroups.PBRNC):
                     self.__neg_out_neighbours.append(sorted(copy))
         return ('PBR(%s, %s)'
                 % (self.__pos_out_neighbours, self.__neg_out_neighbours))
-

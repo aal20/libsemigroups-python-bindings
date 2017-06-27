@@ -2,11 +2,11 @@
 This module contains classes for representing semigroups.
 '''
 # pylint: disable = no-member, protected-access, invalid-name, len-as-condition
-
+# pylint: disable =  no-name-in-module
 import libsemigroups
+from libsemigroups import ElementABC, PythonElementNC
 from semigroups.elements import Transformation
 from semigroups.cayley_graph import CayleyGraph
-from libsemigroups import ElementABC, PythonElementNC
 import networkx
 
 class Semigroup(libsemigroups.SemigroupNC):
@@ -50,9 +50,10 @@ class Semigroup(libsemigroups.SemigroupNC):
             return
         elif len(args) == 0:
             raise ValueError('there must be at least 1 argument')
-        elif not all(map(lambda elt: isinstance(elt, type(args[0])), args)):
+        elif not all(isinstance(elt, type(args[0])) for elt in args):
             raise TypeError('generators must be of the same type')
 
+        self._is_trans_semigroup = isinstance(args[0], Transformation)
         err_msg = 'generators must have a multiplication defined on them'
         x = args[0]
         if not isinstance(x, ElementABC):
@@ -62,10 +63,71 @@ class Semigroup(libsemigroups.SemigroupNC):
                 raise TypeError(err_msg)
 
         self.gens = [g if (isinstance(g, ElementABC) and str(type(g)) !=
-                      "<class 'semigroups.semifp.FPSOME'>")
-                else PythonElementNC(g) for g in args]
+                           "<class 'semigroups.semifp.FPSOME'>")
+                     else PythonElementNC(g) for g in args]
         libsemigroups.SemigroupNC.__init__(self, self.gens)
-        self._done_commute_membership = False
+
+        #the following variables are initioalised for use in Transformation
+        #semigroups
+        self._done_commute_membership_threshold_1 = False
+        self._gen_dicts_AO_SCCs = None
+        self._gens_AO_SCCs = None
+        self._states = None
+        self._no_SCCs = None
+        self._source_SCCs = None
+        self._SCCs = None
+        self._S_AO_SCCs = None
+        self._source_SCCs_union = None
+        self._gen_AO_SCCs_to_gen = None
+
+    def __contains__(self, x):
+        if self._is_trans_semigroup:
+            if not x.degree() == self.gens[0].degree():
+                return False
+
+            if self._is_perm_group():
+                self.enumerate(300000)
+                if self.is_done():
+                    return libsemigroups.SemigroupNC.__contains__(self, x)
+                if self.gens[0].degree() < 50:
+                    return self._perm_group_mem(x)
+
+            if self._is_commutative():
+                if all(g * x == g for g in self.gens):
+                    monoid = self._is_trans_monoid()
+                    return monoid[0] and x == monoid[1]
+                if x._has_threshold_1():
+                    return self._commutative_membership_threshold_1(x)
+
+        if not isinstance(x, ElementABC):
+            x = PythonElementNC(x)
+        return libsemigroups.SemigroupNC.__contains__(self, x)
+
+    def size(self):
+        """
+        A function to find the number of elements in a semigroup.
+
+        Returns:
+            int: The number of elements of the semigroup.
+
+        Raises:
+            TypeError:  If any arguments are passed.
+
+        Examples:
+
+            >>> from semigroups import Semigroup, Transformation
+            >>> S = Semigroup([Transformation([1, 1, 4, 5, 4, 5]),
+            ...                Transformation([2, 3, 2, 3, 5, 5])])
+            >>> S.size()
+            5
+        """
+        self.enumerate(300000)
+        if self.is_done():
+            return libsemigroups.SemigroupNC.size(self)
+        if self._is_perm_group():
+            if self.gens[0].degree() < 50:
+                return self._perm_group_size()
+        return libsemigroups.SemigroupNC.size(self)
 
     def right_cayley_graph(self):
         r"""
@@ -145,11 +207,497 @@ class Semigroup(libsemigroups.SemigroupNC):
         return G
 
     def IsomorphicTransSemigroup(self):
+        r"""
+        Generates a Transformation Semigroup which is isomorphic to self,
+        with a state corresponding to each element and a Transformation
+        corresponding to each element which acts as does multiplication
+        by the element on the right.
+
+        Returns:
+            Semigroup: The Transformation Semigroup
+
+        Examples:
+        >>> from semigroups import BooleanMat
+        >>> S = Semigroup(BooleanMat([[0, 1], [1, 0]]))
+        >>> T = S.IsomorphicTransSemigroup()
+        >>> T.gens
+        [Transformation([1, 0])]
+        >>> T.size()
+        2
+        """
         X = list(self)
         G = []
         for g in self.gens:
             G.append(Transformation([X.index(x * g) for x in X]))
         return Semigroup(G)
+
+    #Returns whether or not f is in self, together with a dictionary, which
+    #sends the tuple of a generator's image list (which determines the
+    #transformation) to the power that the generator is raised to in a
+    #factorisation of f.
+    #Assumes generators commute with the test transformation as this is
+    #checked implicitly in _commutative_membership.
+    def _semilattice_memb(self, f):
+        if f.degree() != self.gens[0].degree():
+            return False, {}
+        if not (f * f == f and all(f * g == g * f for g in self.gens)):
+            return False, {}
+        factors = []
+        powers_of_factors = {}
+        for gen in self.gens:
+            if gen * f == f:
+                powers_of_factors[tuple(gen)] = 1
+                factors.append(gen)
+            else:
+                powers_of_factors[tuple(gen)] = 0
+        return f == _prod(factors, f.identity()), powers_of_factors
+
+    def copy(self):
+        r'''
+        Generates a Transformation Semigroup using the same generators as self,
+        but does not preserve any stored results, such as the enumeration.
+
+        Returns:
+            Semigroup: The Transformation Semigroup.
+
+        Raises:
+            TypeError: If any argument is given.
+
+        Examples:
+            >>> from semigroups import Semigroup, Transformation
+            >>> S = Semigroup(Transformation([1, 0, 2, 3, 2]))
+            >>> S.size()
+            2
+            >>> S.is_done()
+            True
+            >>> T = S.copy()
+            >>> T.is_done()
+            False
+        '''
+        return Semigroup(self.gens)
+
+    #Tests if a self is a transformation monoid. Also returns the identity if
+    #it exists, or an identity if it does not.
+    def _is_trans_monoid(self):
+        if not self._is_trans_semigroup:
+            return False, self.gens[0].identity()
+        U = set.union(*[set(g) for g in self.gens])
+
+        for g in self.gens:
+            image = [g[i] for i in U]
+            domain = list(set(image))
+            if len(image) != len(domain):
+                continue
+            gres = Transformation([domain.index(g[i]) for i in domain])
+            gres_power = _prod([len(i) for i in gres.disjoint_cycle()], 1)
+            return True, g ** gres_power
+
+        return False, self.gens[0].identity()
+
+    #Tests membership in a permutation group. Uses the Schreier-Sims algorithm.
+    def _perm_group_mem(self, f):
+        if not len(list(f)) == len(set(f)):
+            return False
+        orbit_list = []
+        fnew = f
+        stab = self
+        n = self.gens[0].degree()
+
+        for i in range(n - 1):
+            gtrans, orbit = stab._orbit(i)
+            trans = [_prod(gtrans[i],
+                           Transformation(list(range(n)))) for i in orbit]
+            orbit_list.append(orbit)
+
+            if not fnew[i] in orbit:
+                return False
+
+            fnew *= trans[orbit.index(fnew[i])].inverse()
+            if fnew == fnew.identity():
+                return True
+
+            new_gens = set()
+            for t in trans:
+                for g in stab.gens:
+                    new_gens.add(tuple(t * g *
+                                       (trans[orbit.index((t *
+                                                           g)[i])]).inverse()))
+
+            new_gens = [Transformation(list(g)) for g in new_gens]
+            stab = Semigroup(_short_perm_group_generating_set(new_gens))
+            if stab.gens == [Transformation(list(range(n)))]:
+                return fnew == Transformation(list(range(n)))
+
+    #Finds the size of a perm group using the Schreier-Sims algorithm.
+    def _perm_group_size(self):
+        orbit_list = []
+        stab = self
+        n = self.gens[0].degree()
+
+        for i in range(n - 1):
+            trans, orbit = stab._orbit(i)
+            trans = [_prod(trans[i],
+                           Transformation(list(range(n)))) for i in orbit]
+            orbit_list.append(orbit)
+            new_gens = set()
+
+            for t in trans:
+                for g in stab.gens:
+                    new_gens.add(tuple(t * g *
+                                       (trans[orbit.index((t *
+                                                           g)[i])]).inverse()))
+
+            new_gens = [Transformation(list(g)) for g in new_gens]
+            stab = Semigroup(_short_perm_group_generating_set(new_gens))
+
+        return _prod([len(orbit) for orbit in orbit_list], 1)
+
+    #returns a list of elements(as tuples of generators) which map s to
+    #each state in its orbit and it's orbit
+    def _orbit(self, s):
+        X = {s}
+        X_transformations = {s: ()}
+        test = True
+
+        while test:
+            test = False
+
+            for g in self.gens:
+                new_elements = set(["moo"])
+
+                while not X >= new_elements:
+                    X = set.union(X, new_elements)
+                    new_elements = set()
+
+                    for x in X:
+                        if x != "moo" and not g[x] in X:
+                            new_elements.add(g[x])
+                            test = True
+                            X_transformations[g[x]] = (X_transformations[x] +
+                                                       (g,))
+
+                X.discard("moo")
+
+        X = list(X)
+        return X_transformations, X
+
+    #Sets the variable self._SCCs as the SCCs of the transformation semigroup.
+    def _make_SCCs(self):
+        G = networkx.MultiDiGraph()
+        for x in self._states:
+            G.add_node(x)
+
+        for generator in self.gens:
+            for index, image in enumerate(generator):
+                G.add_edge(index, image)
+
+        networkxSCCs = networkx.strongly_connected_components(G)
+        self._SCCs = [tuple(sorted(list(x))) for x in networkxSCCs]
+
+    #gives transformation as dictionary, with keys as input, values as image
+    def _AO_SCCs(self, f):
+        d = {}
+        for SCC in self._SCCs:
+            image = f[SCC[0]]
+
+            for SCC2 in self._SCCs:
+                if image in SCC2:
+                    d[SCC] = SCC2
+                    break
+        return d
+
+    #Checks if a transformation of threshold 1 is in a commutative aperiodic
+    #semigroup. Also returns a factorisation into generators.
+    def _com_mem_thres1_aperiod(self, f):
+        gens = []
+        power_to_gen = {}
+        for g in self.gens:
+            t = g._aperiod_threshold()
+            gens.append(g ** t)
+            power_to_gen[tuple(g ** t)] = {tuple(g):t}
+
+        semilattice_part = Semigroup(gens)._semilattice_memb(f)
+        factordict = {}
+
+        for g in semilattice_part[1]:
+            if semilattice_part[1][g] == 1:
+                factordict.update(power_to_gen[g])
+
+        return semilattice_part[0], factordict
+
+    def _commutative_membership_threshold_1(self, f):
+
+        #Ensure f has same degree as elts of self.gens, the generating set
+        if f.degree() != self.gens[0].degree():
+            return False
+
+        #Step 2 (check if test transformation in the centraliser)
+        for a in self.gens:
+            if not _transformations_commute(f, a):
+                return False
+
+        #Step 3(1): build SCCs, and the source-SCCs of the semigroup, and the
+        #action of the generators on the SCCs (the induced aperiodic semigroup)
+        if not self._done_commute_membership_threshold_1:
+            #Step 1
+            self._states = list(range(f.degree()))
+
+            #The SCCs of states.
+            self._make_SCCs()
+            self._no_SCCs = len(self._SCCs)
+
+            #A transformation with the suffix AO_SCCs, denotes its action on
+            #the SCCs.
+            self._gen_AO_SCCs_to_gen = {}
+            self._gen_dicts_AO_SCCs = []
+
+            for a in self.gens:
+                self._gen_dicts_AO_SCCs.append(self._AO_SCCs(a))
+                a_AO_SCCstp = tuple(_dict_to_trans(self._gen_dicts_AO_SCCs[-1],
+                                                   self._SCCs))
+                self._gen_AO_SCCs_to_gen[a_AO_SCCstp] = a
+
+            self._gens_AO_SCCs = []
+            for a in self._gen_dicts_AO_SCCs:
+                self._gens_AO_SCCs.append(_dict_to_trans(a, self._SCCs))
+
+            self._S_AO_SCCs = Semigroup(self._gens_AO_SCCs)
+
+            #The SCCs that elements of sources lie in. Here, SCC is used to
+            #represent the SCC that a state is in.
+            non_source_SCCs_indexed = set()
+            for a in self._S_AO_SCCs.gens:
+                for i in range(self._no_SCCs):
+                    if a[i] != i:
+                        non_source_SCCs_indexed.add(a[i])
+
+            self._source_SCCs = [self._SCCs[i]
+                                 for i in (set(range(self._no_SCCs))
+                                           - non_source_SCCs_indexed)]
+
+            self._source_SCCs_union = set.union(*[set(SC)
+                                                  for SC in self._source_SCCs])
+
+            self._done_commute_membership_threshold_1 = True
+
+        #Step 3(2): Build the generating set of the source action group of the
+        #semigroup with respect to test transformation.
+
+        #The dict acts on the SCCs (tuples) by returning the SCC that f sends a
+        #given SCC to.
+        #The Transformation (f_AO_SCCs) is obtained by numbering the SCCs, and
+        #calculating the induced Transformation on {0, ..., n - 1}, where n is
+        #the number of SCCs.
+        f_dict_AO_SCCs = self._AO_SCCs(f)
+        f_AO_SCCs = _dict_to_trans(f_dict_AO_SCCs, self._SCCs)
+
+        #The image of sources under f_dict_AO_SCCs
+        img_source_SCCs = [f_dict_AO_SCCs[SCC] for SCC in self._source_SCCs]
+
+        #An abelian group when restricted to the elements whose SCCs lie in
+        #img_source_SCCs, comprising the stabilisers of img_source_SCCs.
+        stables = []
+        for SCC in img_source_SCCs:
+            SCC_stabiling_gens = {tuple(self._states)}
+
+            for a, a_AO_SCCs in zip(self.gens, self._gen_dicts_AO_SCCs):
+                if a_AO_SCCs[SCC] == SCC:
+                    SCC_stabiling_gens.add(tuple(a))
+
+            stables.append(SCC_stabiling_gens)
+
+        img_source_SCCs_stabs = [Transformation(list(img_tup))
+                                 for img_tup in set.intersection(*stables)]
+        #For any transformation g in the centraliser of S, define a
+        #transformation hatg such that (x)hatg = (x)g if the SCC of x is in
+        #img_source_SCCs and g stabilises every SCC in img_source_SCCs.
+        #Otherwise set (x)hatg = x.
+        hatA = [_hat(g, self._SCCs, img_source_SCCs, self._states)
+                for g in img_source_SCCs_stabs]
+
+        #Step 4: Check if the action of f on the SCCs is in the induced
+        #aperiodic semigroup, and if so, produce a factorisation into the
+        #generators of the induced aperiodic semigroup. This is used to build
+        #the aperiodic candidate.
+        f_factorisation = self._S_AO_SCCs._com_mem_thres1_aperiod(f_AO_SCCs)
+        if not f_factorisation[0]:
+            return False
+
+        #The aperiod_candidate is an element of S, whose action on the SCCs is
+        #the same as the action of f, if such an element exists.
+
+        aperiod_candidate = f.identity()
+        for a in f_factorisation[1]:
+            aperiod_candidate *= (self._gen_AO_SCCs_to_gen[a] **
+                                  f_factorisation[1][a])
+
+        #Steps 5, 6: Construct a spanning tree T with root xf for some state x
+        #of the digraph with vertex set Yf and an edge from any SSy in Yf to
+        #any to z in Yf if there exists a in hatA such that ya = z.
+        #For each bary in barY and any x in bary, find the path in T that takes
+        #xlambda_f to the root xf, and define hatmu_f on this subset of
+        #Yf to be the product of the sequence of generators in this path.
+
+        #Here Y is the set of source-SCCs, f is the test transformation, bary
+        #is the SCC of y, lambda_f is the aperiod candidate, and hatmu_f is the
+        #perm candidate
+
+        #If the perm_candidate is not in hatS, then f is not in S.
+        perm_candidates = []
+        for sauce in self._source_SCCs:
+            candidate = _regular_group_element(aperiod_candidate[sauce[0]],
+                                               f[sauce[0]],
+                                               hatA, self._states)
+            if isinstance(candidate, bool):
+                return False
+            perm_candidates.append(candidate)
+
+        perm_candidate_dict = {s:s for s in self._states}
+
+        for i, SCC in enumerate(img_source_SCCs):
+            for x in SCC:
+                perm_candidate_dict[x] = perm_candidates[i][x]
+
+        perm_candidate = Transformation([perm_candidate_dict[i]
+                                         for i in self._states])
+
+        #Step 7: Check if yf = ylambda_f hatmu_f for all y in Y
+
+        #Step 8: Check if the perm candidate is in the Semigroup generated by
+        #hatA.
+
+        ap_cand_by_perm_cand = aperiod_candidate * perm_candidate
+        return (all(f[x] == ap_cand_by_perm_cand[x]
+                    for x in self._source_SCCs_union) and
+                (perm_candidate in Semigroup(hatA)))
+
+    #Creates large transformation semillatices for unittesting.
+    @staticmethod
+    def _big_trans_semilattice(n):
+        gens = []
+        for i in range(n):
+            img = list(range(n))
+            img[i] = 0
+            gens.append(Transformation(img))
+        return Semigroup(*gens)
+
+    #Tests if a transformation semigroup is commutative.
+    def _is_commutative(self):
+        for a1 in self.gens:
+            if not all(_transformations_commute(a1, a2) for a2 in self.gens):
+                return False
+        return True
+
+    #Tests if a commutative semigroup is aperiodic
+    def _is_aperiodic(self):
+        for a in self.gens:
+            powers = [a]
+            while not powers[-1] * a in powers:
+                powers.append(powers[-1] * a)
+            if not powers[-1] * a == powers[-1]:
+                return False
+        return True
+
+    #Assumes self is a transformation semigroup
+    def _is_perm_group(self):
+        if not isinstance(self.gens[0], Transformation):
+            return False
+        return all(len(list(a)) == len(set(a)) for a in self.gens)
+
+#Given a generating set for a transformation group and two states, this
+#finds an element in the group, which takes the first state to the second state
+def _regular_group_element(start, end, gens, domain):
+    if start == end:
+        return gens[0].identity()
+
+    tree = [-1 for i in domain]
+    current_vertices = {start}
+    new_vertices = {start}
+
+    while len(new_vertices) > 0:
+        current_vertices = new_vertices.copy()
+        new_vertices = set()
+
+        for gen in gens:
+            for i in current_vertices:
+                if tree[gen[i]] == -1:
+                    new_vertices.add(gen[i])
+                    tree[gen[i]] = (i, gen)
+
+    genlist = []
+    position = end
+    if tree[position] == -1:
+        return False
+
+    while position != start:
+        genlist.append(tree[position][1])
+        position = tree[position][0]
+    genlist.reverse()
+
+    return _prod(genlist)
+
+#Tests if two transformations commute.
+def _transformations_commute(a, b):
+    n = a.degree()
+    if b.degree() != n:
+        return False
+    for x in range(n):
+        if a[b[x]] != b[a[x]]:
+            return False
+    return True
+
+#Calculates the product of a list.
+def _prod(L, identity=0):
+    if len(L) == 0:
+        return identity
+    out = L[0]
+    for l in L[1:]:
+        out *= l
+    return out
+
+#Given a transformation as a dictionary, its domain, and the size of its
+#domain, it indexes the domain and range of the transformation, and returns the
+#image list of the transformation acting on these indicies.
+def _dict_to_trans(g_dict, domain):
+    return Transformation([domain.index(g_dict[i]) for i in domain])
+
+#Given a generating set for a group, this function attempts to find a smaller
+#generating set for the same group.
+def _short_perm_group_generating_set(big):
+    tableau = {}
+    current_gens = big[:]
+    new_gens = current_gens[:]
+    for j in range(big[0].degree()):
+        current_gens = new_gens[:]
+        new_gens = []
+        for g in current_gens:
+            if (j, g[j]) not in tableau.keys():
+                tableau[(j, g[j])] = g
+                new_gens.append(g)
+            elif g.inverse() * tableau[(j, g[j])] != g.identity():
+                new_gens.append(g.inverse() * tableau[(j, g[j])])
+    output = []
+    for g in new_gens:
+        if not g in output:
+            output.append(g)
+    return output
+
+#For any transformation g in the centraliser of S, define a
+#transformation hatg such that (x)hatg = (x)g if the SCC of x is in
+#img_source_SCCs and g stabilises every SCC in img_source_SCCs.
+#Otherwise set (x)hatg = x.
+def _hat(f, SCCs, img_source_SCCs, states):
+    #Gives transformation as image list
+    d = {}
+    for SCC in SCCs:
+        if SCC in img_source_SCCs:
+            for x in SCC:
+                d[x] = f[x]
+        else:
+            for x in SCC:
+                d[x] = x
+    return Transformation([d[i] for i in states])
+
 def FullTransformationMonoid(n):
     r'''
     A semigroup :math:`S` is a *moniod* if it has an *identity* element. That
@@ -191,10 +739,32 @@ def FullTransformationMonoid(n):
     return Semigroup([Transformation([1, 0] + list(range(2, n))),
                       Transformation([0, 0] + list(range(2, n))),
                       Transformation([n - 1] + list(range(n - 1)))])
+
 def TransDirectProduct(*args):
-    assert all(isinstance(semigrp, Semigroup) for semigrp in args)
-    assert all(all(isinstance(elt, Transformation) for elt in semigrp) for semigrp in args)
-    length = sum(i[0].degree() for i in args)
+    r'''
+    Given some Transformation Monoids constructs a Transformation
+    Monoid which is isomorphic to their direct product
+
+    Args:
+        args (list): The Transformation Monoids.
+
+    Raises:
+        TypeError: If arguments are not Semigroups.
+        ValueError: If Semigroups are not Transformation Semigroups.
+
+    Examples:
+        >>> from semigroups import FpMonoid
+        >>> S = FpMonoid("a",[["a^50", "1"]])
+        >>> T = S.IsomorphicTransSemigroup()
+        >>> Prod = TransDirectProduct(T, T)
+        >>> Prod.size()
+        2500
+    '''
+    if not all(isinstance(semigrp, Semigroup) for semigrp in args):
+        raise TypeError('inputs must be semigroups')
+    if not all(isinstance(semi.gens[0], Transformation) for semi in args):
+        raise ValueError('semigroups must be Transformation Semigroups')
+    length = sum(S.gens[0].degree() for S in args)
     identity = list(range(length))
     out = [Transformation(identity)]
     usedcount = 0
@@ -202,7 +772,80 @@ def TransDirectProduct(*args):
         deg = semigroup[0].degree()
         for trans in semigroup.gens:
             new_img_list = identity[:]
-            new_img_list[usedcount: usedcount + deg] = [usedcount + i for i in list(trans)]
+            new_img_list[usedcount:usedcount + deg] = [usedcount + i
+                                                       for i in list(trans)]
             out.append(Transformation(new_img_list))
         usedcount += deg
     return Semigroup(out)
+
+def SymmetricGroup(n):
+    r'''
+    Let :math:`n\in\mathbb{N}`. The set of all permutations of degree
+    :math:`n` forms a group, under composition of functions, called the
+    *symmetric group*.
+
+    This function returns the symmetric group of degree :math:`n`, for any
+    given :math:`n\in\mathbb{N}`.
+
+    Args:
+        n (int):    The degree of the symmetric group.
+
+    Returns:
+        semigroups.semigrp.Semigroup: The symmetric group.
+
+    Raises:
+        TypeError:  If the degree is not an int.
+        ValueError: If the degree is not positive.
+
+    Examples:
+        >>> from semigroups import SymmetricGroup
+        >>> S = SymmetricGroup(5)
+        >>> S.size()
+        120
+    '''
+    if not isinstance(n, int):
+        raise TypeError('degree of permutation must be an int')
+    if n < 1:
+        raise ValueError('degree of permutation must be positive')
+
+    if n == 1:
+        return Semigroup(Transformation([0]))
+    return Semigroup(Transformation(list(range(1, n)) + [0]),
+                     Transformation([1, 0] + list(range(2, n))))
+
+def TransDihedralGroup(n):
+    r'''
+    Let :math:`n\in\mathbb{N}`. The *dihedral group* of size :math:`2n` is a
+    subgroup of the symmetric group on :math:`n` points, generated by the set
+    :math:`\{(0 \ 1 \ \ldots n), (0 \ n)(1 \ n-1)\cdots \}`.
+
+    This function returns the dihedral group of order :math:`2n`, for any
+    given :math:`n\in\mathbb{N}`.
+
+    Args:
+        n (int):    The degree of the dihedral group.
+
+    Returns:
+        semigroups.semigrp.Semigroup: The dihedral group.
+
+    Raises:
+        TypeError:  If the degree is not an int.
+        ValueError: If the degree is not positive.
+
+    Examples:
+        >>> from semigroups import TransDihedralGroup
+        >>> S = TransDihedralGroup(100)
+        >>> S.size()
+        200
+    '''
+    if not isinstance(n, int):
+        raise TypeError('degree of permutation must be an int')
+    if n < 1:
+        raise ValueError('degree of permutation must be positive')
+    if n == 1:
+        return Semigroup(Transformation([1, 0]))
+    if n == 2:
+        return Semigroup(Transformation([1, 0, 2, 3]),
+                         Transformation([0, 1, 3, 2]))
+    return Semigroup(Transformation(list(range(1, n)) + [0]),
+                     Transformation([0] + list(range(n - 1, 0, -1))))
